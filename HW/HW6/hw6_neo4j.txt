@@ -1,0 +1,109 @@
+/* Part2 */
+/* Q1:  Load the EE5178 student CSV into Neo4J graph database and create one node for each students */
+
+LOAD CSV FROM 'file:///DBMS_student_list.csv' AS row
+CREATE (:student {身份: row[0], 系所: row[1], 年級: toInteger(row[2]), 學號: row[3], 姓名:row[4], 信箱: row[5], 班別: row[6]});
+MATCH (n:student{姓名:'姓名'}) delete n;
+MATCH (n:student) RETURN n;
+
+/* Q2: Modify the database so that you and the students in your project group are recorded as in the same group */
+
+MATCH (me:student {學號: 'R10455001'})
+SET me.group = '5';
+MATCH (b:student {學號: 'R08424026'})
+SET b.group = '5';
+MATCH (c:student {學號: 'R11631028'})
+SET c.group = '5';
+MATCH (d:student {學號: 'F08921A05'})
+SET d.group = '5';
+MATCH (e:student {學號: 'D06921008'})
+SET e.group = '5';
+
+MATCH (peer1:student),(peer2:student)
+WHERE peer1.group = '5' AND peer2.group = '5' AND peer1.姓名 <> peer2.姓名
+CREATE (peer1)-[r:SAME_GROUP]->(peer2);
+
+/* Q3: Write a Cypher query to return you,and students in your group in a list */
+
+MATCH group = (peer1:student)-[r:SAME_GROUP]->(peer2:student)
+RETURN group;
+
+
+/* Part3 */
+/* Q1: Load the student hobbies CSV into the database and create the necessary nodes, relationships, and/or properties so that hobby information is recorded into the database  */
+
+LOAD CSV FROM 'file:///hw6_hobbies.csv' AS row
+CREATE (:hobby {學號: row[0], 姓名: row[1], hobby1: row[2], hobby2: row[3], hobby3: row[4], hobby4: row[5], hobby5: row[6]});
+MATCH (n:hobby{姓名:'姓名'}) delete n;
+
+/* Q2:  find out all the students in this class who has the at least one common hobbies as you. Write a cypher query to print out your “hobby friends” and their associate new hobbies */
+
+MATCH (me:hobby {學號:'R10455001'})
+MATCH (a:hobby)
+WHERE (a.hobby1 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] OR
+      a.hobby2 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] OR 
+      a.hobby3 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] OR 
+      a.hobby4 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] OR 
+      a.hobby5 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5]) AND
+      a <> me
+CREATE (me)-[rel:hobby_friend]->(a);
+
+MATCH p = (me)-[rel:hobby_friend]->(a)
+RETURN p;
+
+MATCH (me:hobby {學號: 'R10455001'})-[rel:hobby_friend]->(a:hobby)
+RETURN a.姓名 AS hobbyFriend, a.hobby1, a.hobby2, a.hobby3, a.hobby4, a.hobby5;
+
+
+/* Q3: find other students who have at least one common hobby with your hobby friends.Write a cypher query to print out your “foaf” and their associate new hobbies */
+MATCH (a:hobby)
+MATCH (m:hobby)
+MATCH (me: hobby {學號:'R10455001'})
+MATCH (me)-[rel:hobby_friend]-(m)
+WHERE NOT (me)-[rel:hobby_friend]-(a) AND 
+(a.hobby1 in [m.hobby1, m.hobby2, m.hobby3, m.hobby4, m.hobby5] OR 
+ a.hobby2 in [m.hobby1, m.hobby2, m.hobby3, m.hobby4, m.hobby5] OR
+ a.hobby3 in [m.hobby1, m.hobby2, m.hobby3, m.hobby4, m.hobby5] OR
+ a.hobby4 in [m.hobby1, m.hobby2, m.hobby3, m.hobby4, m.hobby5] OR
+ a.hobby5 in [m.hobby1, m.hobby2, m.hobby3, m.hobby4, m.hobby5] ) AND
+(NOT a.hobby1 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] AND NOT
+ a.hobby2 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] AND NOT
+ a.hobby3 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] AND NOT
+ a.hobby4 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5] AND NOT
+ a.hobby5 in [me.hobby1, me.hobby2, me.hobby3, me.hobby4, me.hobby5]) AND
+ a <> m  AND a <> me
+MERGE (me)-[r:foaf]->(a);
+
+
+MATCH (me)-[r:foaf]->(a)
+RETURN a.姓名, a.hobby1, a.hobby2, a.hobby3, a.hobby4, a.hobby5;
+
+/* Q4:  the hobby friends of your group members can also become your friends. Let’s call them “foaf2”. Write a cypher query to print your “foaf2”*/
+MATCH (me:hobby {學號: 'R10455001'})
+SET me.group = '5';
+MATCH (b:hobby {學號: 'R08424026'})
+SET b.group = '5';
+MATCH (c:hobby {學號: 'R11631028'})
+SET c.group = '5';
+MATCH (d:hobby {學號: 'F08921A05'})
+SET d.group = '5';
+MATCH (e:hobby {學號: 'D06921008'})
+SET e.group = '5';
+
+MATCH (me:hobby {學號:'R10455001'})
+MATCH (g:hobby {group:'5'})
+MATCH (a:hobby)
+WHERE (a.hobby1 in [g.hobby1, g.hobby2, g.hobby3, g.hobby4, g.hobby5] OR
+      a.hobby2 in [g.hobby1, g.hobby2, g.hobby3, g.hobby4, g.hobby5] OR
+      a.hobby3 in [g.hobby1, g.hobby2, g.hobby3, g.hobby4, g.hobby5] OR
+      a.hobby4 in [g.hobby1, g.hobby2, g.hobby3, g.hobby4, g.hobby5] OR
+      a.hobby5 in [g.hobby1, g.hobby2, g.hobby3, g.hobby4, g.hobby5]) AND
+      a <> me AND g <> me
+MERGE (me)-[relation:foaf2]->(a);
+
+
+/* Q5: Write a Cypher query to list all your “foaf2” excluding “foaf”.*/
+
+
+
+

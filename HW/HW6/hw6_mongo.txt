@@ -1,0 +1,91 @@
+/* HW6 mongoDB code */
+
+/* Q1: load CSV file and return yourself */
+use hw6
+db.createCollection('students')
+mongoimport --db=hw6 --collection=students --type=csv --headerline --file=/Users/pxchen/Downloads/hw6_files/DBMS_student_list.csv
+
+db.students.find({'學號': 'R10455001'})
+
+/* Q2: return informaiton about you and your groups */
+db.students.find({'學號': {$in: [ 'R10455001', 'R08424026', 'R11631028', 'F08921A05', 'D06921008']}})
+ 
+/* Q3: find out number of students in each “系級" */
+db.students.aggregate([
+  {
+    $group: {
+      _id: {"depart":"$系所",
+            "year":"$年級"
+           },
+      number: { 
+        $sum: 1, },
+    },
+  },
+])
+
+/* Q4: add a new field “join_date", and set the “2023-03-01”. Then return the information about you and your group members*/
+db.students.updateMany({}, {$set: {join_date: ISODate("2023-03-01")}})
+db.students.find({'學號': {$in: [ 'R10455001', 'R08424026', 'R11631028', 'F08921A05', 'D06921008']}})
+
+/* Q5: Add new students into your “students” collection, and return yourself and new students */
+db.students.insertMany([
+          {身份: '旁聽生', 系所: '電機所', 年級: 2, 學號: 'R10123456',姓名: '小紅', join_date: ISODate('2023-06-02')},
+          {身份: '學生', 系所: '物理系', 年級: 3, 學號: 'B09987653',姓名: '小黃', join_date: ISODate('2023-06-02')},
+          {身份: '觀察者', 系所: '電信所', 年級: 1, 學號: 'R11123001',姓名: '小綠', join_date: ISODate('2023-06-02')}
+          ])
+
+db.students.find({'學號': {$in: [ 'R10455001', 'R10123456','B09987653','R11123001']}})
+
+/* Q6: Design a increment aggregation pipeline to calculate the number of student for each “系 級", and store your result in a “tally” document in your “students” collection. Run your query with date as to “2023-03-31” first. Print out the “tally” document. Then run your query again with date set to “2023-06-10”, and print out the “tally” document */
+
+var date = new ISODate("2023-03-31")
+
+db.students.aggregate([
+  { $match: { join_date: { $lte: date } } },
+  {
+    $group: {
+      _id: { "depart": "$系所",
+             "year": "$年級" 
+           },
+      number: { 
+        $sum: 1, },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      depart: "$_id.depart",
+      year: "$_id.year",
+      number: 1
+    },
+  },
+  { $out: "tally" }
+])
+
+db.tally.find()
+
+var date = new ISODate("2023-06-10")
+
+db.students.aggregate([
+  { $match: { join_date: { $lte: date } } },
+  {
+    $group: {
+      _id: { "depart": "$系所",
+             "year": "$年級"
+           },
+      number: {
+        $sum: 1, },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      depart: "$_id.depart",
+      year: "$_id.year",
+      number: 1
+    },
+  },
+  { $out: "tally" }
+])
+
+db.tally.find()
